@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アニマルMINT</title>
+    <style>
+        /* ここからCSS（デザイン）の指定 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+
+        p {
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        #counter {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        #imageContainer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 220px; /* 画像が表示されていない時の高さを確保 */
+        }
+
+        .image-box {
+            width: 100%;
+            padding-top: 100%; /* 正方形を維持するためのテクニック */
+            position: relative;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            overflow: hidden; /* 角丸を適用するため */
+        }
+        
+        .image-box.clickable {
+            cursor: pointer;
+            border-color: #3498db;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .image-box.clickable:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        }
+
+        .image-box img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* アスペクト比を保ったままボックスを埋める */
+        }
+
+        #result {
+            font-size: 1.2em;
+            font-weight: bold;
+            min-height: 1.5em; /* 結果表示エリアの高さを確保 */
+            margin-bottom: 10px;
+        }
+
+        #result.ok {
+            color: #2ecc71; /* 緑色 */
+        }
+
+        #result.ng {
+            color: #e74c3c; /* 赤色 */
+        }
+
+        #message {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            min-height: 3em; /* メッセージエリアの高さを確保 */
+            padding: 0 10px;
+        }
+        /* ここまでCSS */
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>アニマルMINT</h1>
+        <p>[次の画像へ]を押して動物の画像をタップ</p>
+        
+        <div id="counter">0</div>
+        
+        <div class="controls">
+            <button id="nextBtn">次の画像へ</button>
+            <button id="retryBtn">もう一度やる</button>
+        </div>
+
+        <div id="imageContainer">
+            <!-- JavaScriptによって画像がここに挿入されます -->
+        </div>
+
+        <div id="result"></div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        // ここからJavaScript（プログラムの動き）
+        
+        // --- 設定項目 ---
+        const MAX_ROUNDS = 8; // ゲームのラウンド数
+        const IMAGE_PATH = 'images/'; // 画像が保存されているフォルダのパス
+                                      // このHTMLファイルと同じ階層に'images'フォルダを作成し、
+                                      // そこにダウンロードした画像を入れてください。
+
+        // --- 画像ファイルリスト ---
+        // ステップ10でダウンロードした画像ファイル名をここに追加します。
+        // ファイル名は'a'で始まるものが動物、'n'で始まるものが動物以外です。
+        // 簡単にするため、リストを直接書きます。
+        const animalImages = [
+            'a001.png', 'a002.png', 'a003.png', 'a004.png', 'a005.png', 'a006.png', 'a007.png', 'a008.png', 'a009.png', 'a010.png',
+            'a011.png', 'a012.png', 'a013.png', 'a014.png', 'a015.png', 'a016.png', 'a017.png', 'a018.png', 'a019.png', 'a020.png' 
+        ];
+        const nonAnimalImages = [
+            'n001.png', 'n002.png', 'n003.png', 'n004.png', 'n005.png', 'n006.png', 'n007.png', 'n008.png', 'n009.png', 'n010.png',
+            'n011.png', 'n012.png', 'n013.png', 'n014.png', 'n015.png', 'n016.png', 'n017.png', 'n018.png', 'n019.png', 'n020.png',
+            'n021.png', 'n022.png', 'n023.png', 'n024.png', 'n025.png', 'n026.png', 'n027.png', 'n028.png', 'n029.png', 'n030.png',
+            'n031.png', 'n032.png', 'n033.png', 'n034.png', 'n035.png', 'n036.png', 'n037.png', 'n038.png', 'n039.png', 'n040.png'
+        ];
+        
+        // --- 癒しの言葉リスト ---
+        const messages = [
+            "犬は、広場につれていけば、喜んで走り回る。",
+            "鳥は、鳥かごから出してやれば、大空へ向かって飛び立つ。",
+            "リラックスしよう。大丈夫、すべてうまくいくよ。",
+            "深い呼吸を一つ。心が落ち着いてくる。",
+            "君は君のままで素晴らしい。",
+            "小さな一歩が、大きな未来につながる。",
+            "たまには休んでもいいんだよ。",
+            "人は、幸福になる義務がある。お疲れ様でした！！"
+        ];
+        
+        // --- HTML要素の取得 ---
+        // プログラムで操作したいHTMLの部品を、変数に入れておく
+        const counterEl = document.getElementById('counter');
+        const nextBtn = document.getElementById('nextBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const imageContainerEl = document.getElementById('imageContainer');
+        const resultEl = document.getElementById('result');
+        const messageEl = document.getElementById('message');
+
+        // --- ゲームの状態を管理する変数 ---
+        let currentRound = 0; // 現在のラウンド数
+        let shuffledAnimals = []; // シャッフルされた動物画像のリスト
+        let shuffledNonAnimals = []; // シャッフルされた動物以外の画像のリスト
+        let isClickable = false; // 画像がクリック可能かどうかの状態
+
+        // --- イベントリスナーの設定 ---
+        // ページが読み込まれたらゲームの準備をする
+        document.addEventListener('DOMContentLoaded', setupGame);
+        // 「次の画像へ」ボタンがクリックされたらnextQuestion関数を呼び出す
+        nextBtn.addEventListener('click', nextQuestion);
+        // 「もう一度やる」ボタンがクリックされたらretryGame関数を呼び出す
+        retryBtn.addEventListener('click', retryGame);
+
+        /**
+         * 配列の要素をランダムにシャッフルする関数（フィッシャー–イェーツのシャッフル）
+         * @param {Array} array シャッフルしたい配列
+         * @returns {Array} シャッフルされた配列
+         */
+        function shuffle(array) {
+            const newArray = [...array]; // 元の配列を壊さないようにコピーを作成
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        /**
+         * ゲームの初期設定を行う関数
+         */
+        function setupGame() {
+            currentRound = 0;
+            counterEl.textContent = currentRound;
+            resultEl.textContent = '';
+            messageEl.textContent = 'さあ、はじめよう！';
+            
+            // 画像リストをシャッフルして、ゲームで使う順番を決めておく
+            shuffledAnimals = shuffle(animalImages);
+            shuffledNonAnimals = shuffle(nonAnimalImages);
+            
+            nextBtn.disabled = false;
+            retryBtn.disabled = true;
+            imageContainerEl.innerHTML = ''; // 画像表示エリアを空にする
+        }
+
+        /**
+         * 「次の画像へ」ボタンが押されたときの処理
+         */
+        function nextQuestion() {
+            if (currentRound >= MAX_ROUNDS) {
+                // 最大ラウンド数に達していたら、ゲーム終了
+                resultEl.textContent = 'おしまい';
+                messageEl.textContent = messages[MAX_ROUNDS - 1]; // 最後のメッセージ
+                nextBtn.disabled = true;
+                retryBtn.disabled = false;
+                return;
+            }
+            
+            currentRound++;
+            counterEl.textContent = currentRound;
+            resultEl.textContent = '';
+            messageEl.textContent = '***';
+            
+            displayQuestion();
+        }
+        
+        /**
+         * 問題の画像（4枚）を表示する関数
+         */
+        function displayQuestion() {
+            // 今回の問題で使う画像を選ぶ
+            const animalToShow = shuffledAnimals[currentRound - 1];
+            const nonAnimalsToShow = shuffledNonAnimals.slice((currentRound - 1) * 3, currentRound * 3);
+            
+            // 4枚の画像を結合して、さらにシャッフルする（表示位置をランダムにするため）
+            let questionImages = shuffle([animalToShow, ...nonAnimalsToShow]);
+
+            // 画像表示エリアを一度空にする
+            imageContainerEl.innerHTML = '';
+
+            // 4枚の画像を画面に表示する
+            questionImages.forEach(imageName => {
+                const imgBox = document.createElement('div');
+                imgBox.className = 'image-box clickable';
+
+                const img = document.createElement('img');
+                img.src = IMAGE_PATH + imageName;
+                img.dataset.name = imageName; // データ属性にファイル名を保存（正解判定で使う）
+                
+                imgBox.appendChild(img);
+                imageContainerEl.appendChild(imgBox);
+                
+                // 各画像にクリックイベントを設定
+                imgBox.addEventListener('click', checkAnswer);
+            });
+            
+            isClickable = true; // クリック可能にする
+        }
+
+        /**
+         * 画像がクリックされたときに、正解かどうかを判定する関数
+         * @param {Event} event クリックイベントの情報
+         */
+        function checkAnswer(event) {
+            if (!isClickable) return; // クリック不可の状態なら何もしない
+            
+            isClickable = false; // 一度クリックされたら、再度クリックできないようにする
+            
+            // すべての画像のクリック可能スタイルを解除
+            document.querySelectorAll('.image-box').forEach(box => {
+                box.classList.remove('clickable');
+                // イベントリスナーも削除して、二重クリックを防ぐ
+                const newBox = box.cloneNode(true);
+                box.parentNode.replaceChild(newBox, box);
+            });
+
+            const clickedImageName = event.currentTarget.querySelector('img').dataset.name;
+            
+            // ファイル名が 'a' で始まっていれば正解！
+            if (clickedImageName.startsWith('a')) {
+                resultEl.textContent = 'OK! ANIMAL';
+                resultEl.className = 'ok';
+            } else {
+                resultEl.textContent = 'NG';
+                resultEl.className = 'ng';
+            }
+            
+            // ラウンドに応じたメッセージを表示
+            messageEl.textContent = messages[currentRound - 1];
+
+            if (currentRound >= MAX_ROUNDS) {
+                nextBtn.disabled = true;
+                retryBtn.disabled = false;
+            }
+        }
+        
+        /**
+         * 「もう一度やる」ボタンが押されたときの処理
+         */
+        function retryGame() {
+            setupGame(); // ゲームを初期化して再スタート
+        }
+        
+        // ここまでJavaScript
+    </script>
+</body>
+</html>
